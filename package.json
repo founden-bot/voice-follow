@@ -1,0 +1,16 @@
+{
+  "name": "voice-follow",
+  "version": "1.0.0",
+  "description": "A voice-activated teleprompter engine: places a reader in a script from what speech recognition heard, so the text scrolls as they speak and waits when they pause.",
+  "type": "module",
+  "main": "dist/voice-follow.js",
+  "types": "dist/voice-follow.d.ts",
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc src/voice-follow.ts --target es2022 --module es2022 --declaration --outDir dist",
+    "test": "node --test test.mjs"
+  },
+  "keywords": ["teleprompter", "voice-activated", "speech-recognition", "web-speech-api", "prompter", "script"],
+  "homepage": "https://yapcam.cc/teleprompter",
+  "license": "MIT"
+}
