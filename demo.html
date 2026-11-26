@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>voice-follow demo: a teleprompter that follows your voice</title>
+<style>
+  body { margin: 0; background: #101214; color: #f4f2ee; font: 18px/1.5 system-ui, sans-serif; }
+  header { padding: 16px 24px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  textarea { width: calc(100% - 48px); margin: 0 24px; height: 120px; background: #1b1e21; color: inherit; border: 1px solid #333; border-radius: 8px; padding: 12px; font: inherit; }
+  button { background: #f4f2ee; color: #101214; border: 0; border-radius: 6px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  #stage { padding: 40vh 24px; max-width: 900px; margin: 0 auto; font-size: 40px; line-height: 1.35; }
+  #stage p { margin: 0 0 1em; }
+  .read { opacity: 0.35; }
+  .next { text-decoration: underline; text-decoration-thickness: 3px; }
+  #status { opacity: 0.7; font-size: 15px; }
+</style>
+</head>
+<body>
+<header>
+  <button id="start">Start listening</button>
+  <span id="status">Paste a script, press Start and read aloud. Works where the browser has speech recognition (Chrome, Edge, Safari on a Mac).</span>
+</header>
+<textarea id="script">Hi, I am trying a teleprompter that follows my voice.
+
+When I pause, the text waits for me. When I skip a line, it catches up.
+
+That is all it takes to read a script on camera without chasing a scroll speed.</textarea>
+<div id="stage"></div>
+<script type="module">
+  import { parseScript, spokenWords, followVoice } from "./dist/voice-follow.js";
+
+  const stage = document.getElementById("stage");
+  const status = document.getElementById("status");
+  let parsed = parseScript(document.getElementById("script").value);
+  let position = 0;
+  let spans = [];
+
+  function render() {
+    stage.innerHTML = "";
+    spans = [];
+    for (const paragraph of parsed.paragraphs) {
+      const p = document.createElement("p");
+      for (const { word, index } of paragraph.words) {
+        const span = document.createElement("span");
+        span.textContent = word.text + " ";
+        spans[index] = span;
+        p.appendChild(span);
+      }
+      stage.appendChild(p);
+    }
+    mark();
+  }
+
+  function mark() {
+    spans.forEach((span, i) => { span.className = i < position ? "read" : i === position ? "next" : ""; });
+    spans[Math.min(position, spans.length - 1)]?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+
+  document.getElementById("start").addEventListener("click", () => {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Recognition) { status.textContent = "This browser has no speech recognition. Try Chrome, Edge, or Safari on a Mac."; return; }
+    parsed = parseScript(document.getElementById("script").value);
+    position = 0;
+    render();
+    const recognition = new Recognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = document.documentElement.lang || "en-US";
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) transcript += " " + event.results[i][0].transcript;
+      const next = followVoice(spokenWords(transcript), parsed.words, position);
+      if (next !== null && next !== position) { position = next; mark(); }
+    };
+    recognition.onend = () => recognition.start();
+    recognition.start();
+    status.textContent = "Listening. Read the script aloud.";
+  });
+
+  render();
+</script>
+</body>
+</html>
